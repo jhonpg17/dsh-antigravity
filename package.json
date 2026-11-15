@@ -1,0 +1,32 @@
+{
+  "name": "dsh-antigravity",
+  "version": "0.1.0",
+  "description": "Cordis plugin for DeepSeek Harness (DSH) that exposes the Google Antigravity CLI (agy) as native model tools.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "lib/**/*.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node test/smoke.mjs"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "antigravity",
+    "agy",
+    "gemini"
+  ],
+  "author": "Jhon Alberto Perez",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,22 @@
+# Example: enable dsh-antigravity in a DSH profile.
+#
+# `cordis.patch.yml` is a top-level YAML array of patch entries. Append this
+# block to ~/.dsh/profiles/<profile>/cordis.patch.yml (if the file already has
+# entries, just add the new `- insert:` item at the end).
+#
+# A patch can only override existing entries; therefore a new plugin instance
+# is added with `insert:` (a bare `- id: ...` entry would warn
+# "entry not found" and be skipped).
+#
+# All config fields are optional; omitted fields use the defaults shown.
+
+- insert:
+    - id: antigravity
+      name: dsh-antigravity
+      config:
+        agyPath: ~/.local/bin/agy      # path to the agy binary (~ is expanded)
+        # cwd: ~/projects/my-repo      # default working dir (default: process.cwd())
+        defaultModel: ''               # '' = let agy pick its default model
+        defaultEffort: ''              # low | medium | high | xhigh | max | ''
+        skipPermissions: true          # adds --dangerously-skip-permissions
+        timeoutSec: 300                # default agy_run timeout (1-3600)
