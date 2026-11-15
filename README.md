@@ -63,6 +63,7 @@ Verificación rápida sin reiniciar: `node test/smoke.mjs` (sin red ni `agy` rea
 | `agy_run` | `prompt` (req.), `model`, `effort` (`low\|medium\|high\|xhigh\|max`), `mode` (`accept-edits\|auto\|plan`), `cwd`, `skipPermissions`, `timeoutSec` (1–3600) | Ejecuta `agy -p <prompt> --output-format json …` en modo headless | `{ ok, status, response, conversationId, model, durationSeconds, usage }` o `{ ok: false, error, stderrTail }` |
 | `agy_models` | — | Ejecuta `agy models` y parsea `id\tNombre` | `{ ok, count, models: [{ id, name }], raw }` |
 | `agy_status` | — | Comprueba binario, `agy --version` y credenciales OAuth (< 15 s) | `{ ok, installed, version, authenticated, agyPath, credentialsPath }` |
+| `agy_usage` | — | Ejecuta `agy -p "/usage"`, prefiere `command.data` y cae a la tabla de texto | `{ ok, groups: [{ name, description, buckets: [{ name, window, remainingPercent, resetTime }] }], raw }` |
 | `run_python` | `code` (req.), `cwd`, `timeoutSec` (1–600, def. 60) | Ejecuta `python3 -I` sobre un archivo temporal | `{ ok, exitCode, stdout, stderr }` (stdout ≤ 20000, stderr ≤ 4000 chars) |
 
 Comportamiento común:
@@ -71,6 +72,29 @@ Comportamiento común:
 - Argumentos groseramente inválidos (p. ej. `prompt` o `code` vacío, enums desconocidos) lanzan `Error`.
 - Si la sesión aborta (`exec.signal`), se mata el grupo de procesos hijo y se devuelve `{ ok: false, error: 'aborted' }`.
 - Si vence el timeout: `{ ok: false, error: 'timeout after <n>s' }`.
+
+## Cuotas y consumo (`agy_usage`)
+
+Antigravity reparte la cuota en **grupos de modelos**; dentro de un grupo todos comparten el mismo
+límite semanal y el mismo límite de 5 horas. `agy_usage` devuelve, por grupo y por ventana, el
+porcentaje restante y cuándo se refresca:
+
+| grupo | ventanas |
+|---|---|
+| Gemini Models (Gemini 4 Hydrogen, Gemini 3.8 Flash) | `weekly`, `5h` |
+| Claude and GPT models (Claude Opus/Sonnet 5.5, GPT-OSS 120B) | `weekly`, `5h` |
+| Gemini 4 Argon (cuota aparte en planes Pro) | `weekly` |
+
+El `render` de la herramienta dibuja barras en el resultado, así que el consumo se ve sin pedir nada más:
+
+```
+Claude and GPT models
+  weekly █████████████████░░░  84.1%  reset 2026-11-22T22:33:33Z
+  5h     ██████████████░░░░░░  70.2%  reset 2026-11-16T03:33:33Z
+```
+
+Consulta la cuota antes de una tarea larga con un modelo caro, o pide al modelo una gráfica
+(el resultado es estructurado y se puede graficar directamente).
 
 ## Configuración
 

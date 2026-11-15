@@ -17,6 +17,7 @@ async function step(label, fn) {
 }
 
 const plugin = await import('../index.js')
+const { parseUsage } = await import('../lib/tools.js')
 const registered = []
 const byName = (n) => registered.find((t) => t.name === n)
 
@@ -26,7 +27,7 @@ await step('exports name/inject/apply', () => {
   assert.equal(typeof plugin.apply, 'function')
 })
 
-await step('apply registers exactly 4 well-formed tools', () => {
+await step('apply registers exactly 5 well-formed tools', () => {
   const ctx = {
     tools: {
       register(def) {
@@ -36,8 +37,8 @@ await step('apply registers exactly 4 well-formed tools', () => {
     },
   }
   plugin.apply(ctx, { agyPath: '/nonexistent/agy' })
-  assert.equal(registered.length, 4)
-  assert.deepEqual(registered.map((t) => t.name).sort(), ['agy_models', 'agy_run', 'agy_status', 'run_python'])
+  assert.equal(registered.length, 5)
+  assert.deepEqual(registered.map((t) => t.name).sort(), ['agy_models', 'agy_run', 'agy_status', 'agy_usage', 'run_python'])
   for (const t of registered) {
     assert.equal(typeof t.name, 'string')
     assert.ok(typeof t.description === 'string' && t.description.length > 0, `${t.name}.description`)
@@ -103,12 +104,35 @@ if (process.platform !== 'win32') {
         '#!/bin/sh',
         'if [ "$1" = "--version" ]; then echo "agy 9.9.9"; exit 0; fi',
         'if [ "$1" = "models" ]; then printf "gemini-x\\tGemini X\\nclaude-y\\tClaude Y\\n\\n"; exit 0; fi',
+        'if [ "$1" = "-p" ] && [ "$2" = "/usage" ]; then cat "' + dir + '/usage.json"; exit 0; fi',
         'if [ "$1" = "-p" ] && [ "$2" = "sleep" ]; then sleep 5; exit 0; fi',
         'echo "diagnostic on stderr" >&2',
         'echo \'{"status":"SUCCESS","response":"pong","conversationId":"c-1","model":"gemini-x","durationSeconds":1.5,"usage":{"inputTokens":3,"outputTokens":4,"thinkingTokens":1,"totalTokens":8}}\'',
         '',
       ].join('\n'),
       { mode: 0o755 },
+    )
+    fs.writeFileSync(
+      path.join(dir, 'usage.json'),
+      JSON.stringify({
+        status: 'SUCCESS',
+        response: 'text fallback',
+        command: {
+          name: 'usage',
+          data: {
+            groups: [
+              {
+                name: 'Gemini Models',
+                description: 'Models within this group: Gemini 4 Hydrogen',
+                buckets: [
+                  { id: 'gemini-weekly', name: 'Weekly Limit Remaining', window: 'weekly', remaining_fraction: 0.99, reset_time: '2026-11-22T22:02:35Z' },
+                  { id: 'gemini-5h', name: 'Five Hour Limit Remaining', window: '5h', remaining_fraction: 0.7, reset_time: '2026-11-16T03:02:35Z' },
+                ],
+              },
+            ],
+          },
+        },
+      }),
     )
     const tools = []
     plugin.apply({ tools: { register: (d) => (tools.push(d), () => {}) } }, { agyPath: fake, cwd: dir })
@@ -124,6 +148,28 @@ if (process.platform !== 'win32') {
       assert.equal(r.ok, true)
       assert.equal(r.count, 2)
       assert.deepEqual(r.models[0], { id: 'gemini-x', name: 'Gemini X' })
+    })
+    await step('fake agy: agy_usage (structured)', async () => {
+      const r = await t('agy_usage').execute({}, {})
+      assert.equal(r.ok, true, JSON.stringify(r))
+      assert.equal(r.groups.length, 1)
+      assert.equal(r.groups[0].buckets.length, 2)
+      assert.equal(r.groups[0].buckets[0].window, 'weekly')
+      assert.equal(r.groups[0].buckets[1].window, '5h')
+      assert.equal(r.groups[0].buckets[1].remainingPercent, 70)
+      const text = t('agy_usage').output.render({}, r)[0].text
+      assert.match(text, /Gemini Models/)
+      assert.match(text, /5h/)
+    })
+    await step('parseUsage: text-table fallback', () => {
+      const groups = parseUsage({
+        response: 'Gemini Models\tWeekly Limit Remaining\t99%\t2026-11-22T22:02:35Z\nClaude and GPT models\tFive Hour Limit Remaining\t70%\t2026-11-16T03:33:33Z\n',
+      })
+      assert.equal(groups.length, 2)
+      assert.equal(groups[0].name, 'Gemini Models')
+      assert.equal(groups[0].buckets[0].window, 'weekly')
+      assert.equal(groups[1].buckets[0].window, '5h')
+      assert.equal(groups[1].buckets[0].remainingPercent, 70)
     })
     await step('fake agy: agy_run success', async () => {
       const r = await t('agy_run').execute({ prompt: 'ping', effort: 'low' }, {})
