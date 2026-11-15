@@ -147,6 +147,40 @@ if (process.platform !== 'win32') {
   }
 }
 
+// DSH accepts only a small JSON Schema subset for tool schemas
+// (type/oneOf/properties/required/additionalProperties/items/enum/const +
+// annotations). Registering an unsupported keyword throws at load time, so
+// guard the shipped schemas here instead of discovering it in production.
+const SUPPORTED_SCHEMA_KEYS = new Set([
+  'type', 'oneOf', 'properties', 'required', 'additionalProperties', 'items',
+  'enum', 'const', 'description', 'title', 'default', 'examples', 'deprecated',
+])
+
+function assertSupportedSchema(schema, where) {
+  if (Array.isArray(schema)) {
+    schema.forEach((s, i) => assertSupportedSchema(s, `${where}[${i}]`))
+    return
+  }
+  if (schema === null || typeof schema !== 'object') return
+  for (const key of Object.keys(schema)) {
+    assert.ok(SUPPORTED_SCHEMA_KEYS.has(key), `${where}: unsupported keyword "${key}"`)
+  }
+  if (schema.type !== undefined) {
+    assert.equal(typeof schema.type, 'string', `${where}: "type" must be a single string`)
+  }
+  for (const [k, v] of Object.entries(schema.properties || {})) assertSupportedSchema(v, `${where}.properties.${k}`)
+  if (schema.items !== undefined) assertSupportedSchema(schema.items, `${where}.items`)
+  if (Array.isArray(schema.oneOf)) schema.oneOf.forEach((s, i) => assertSupportedSchema(s, `${where}.oneOf[${i}]`))
+}
+
+await step('schemas stay inside the DSH-supported subset', () => {
+  for (const tool of registered) {
+    assertSupportedSchema(tool.parameters, `${tool.name}.parameters`)
+    assertSupportedSchema(tool.output.schema, `${tool.name}.output.schema`)
+    assert.equal(typeof tool.output.render, 'function', `${tool.name}: output.render`)
+  }
+})
+
 if (failures.length) {
   console.error(`\nSMOKE FAILED (${failures.length}):`)
   for (const f of failures) console.error(`- ${f.label}: ${f.err?.message || f.err}`)
