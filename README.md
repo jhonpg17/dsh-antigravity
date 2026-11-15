@@ -1,5 +1,7 @@
 # dsh-antigravity
 
+[![test](https://github.com/jhonpg17/dsh-antigravity/actions/workflows/test.yml/badge.svg)](https://github.com/jhonpg17/dsh-antigravity/actions/workflows/test.yml)
+
 Plugin de [Cordis](https://cordis.io) para **DeepSeek Harness (DSH)** que expone la CLI de Google Antigravity (`agy`) como herramientas nativas del modelo.
 
 Desde cualquier sesión de DSH el modelo puede delegar una tarea completa al agente de Antigravity y recibir su respuesta, listar modelos, comprobar el estado de la instalación y ejecutar Python.
@@ -22,7 +24,7 @@ Requiere una versión de DSH cuyo perfil use el loader de Cordis (servicio `tool
 
    ```sh
    # desde git (repositorio público, no pide credenciales):
-   dsh plugin --profile web add github:USUARIO/dsh-antigravity
+   dsh plugin --profile web add github:jhonpg17/dsh-antigravity
 
    # desde una copia local del repo:
    dsh plugin --profile web add file:/ruta/a/dsh-antigravity

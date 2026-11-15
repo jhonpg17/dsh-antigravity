@@ -28,5 +28,13 @@
   "license": "MIT",
   "engines": {
     "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jhonpg17/dsh-antigravity.git"
+  },
+  "homepage": "https://github.com/jhonpg17/dsh-antigravity#readme",
+  "bugs": {
+    "url": "https://github.com/jhonpg17/dsh-antigravity/issues"
   }
 }
